@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      test_notify:
+        description: "Лише надіслати тестове сповіщення (перевірка BARK_KEY)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write # пуш у гілку state
@@ -54,7 +59,7 @@ jobs:
           NOTIFY_ON_OFF: ${{ vars.NOTIFY_ON_OFF }}
           # cron у GitHub може запізнюватись — тож вікно ширше, ніж для режиму реального часу
           MAX_MESSAGE_AGE_MIN: ${{ vars.MAX_MESSAGE_AGE_MIN || '120' }}
-        run: python -m power_notifier poll
+        run: python -m power_notifier ${{ inputs.test_notify && 'test-notify' || 'poll' }}
 
       - name: Save state
         env:

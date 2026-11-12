@@ -34,7 +34,8 @@ GitHub Actions (cron ~5 хв) ──▶ t.me/s/<канал> ──▶ парсе
    - *(опційно)* `TG_BOT_TOKEN`, `TG_BOT_CHAT_ID`
 3. *(Опційно)* там само у ***Variables***: `BARK_SOUND`, `BARK_CRITICAL`, `BARK_VOLUME`, `BARK_CALL`,
    `NOTIFY_ON_OFF`, `MAX_MESSAGE_AGE_MIN` (див. таблицю нижче).
-4. *Actions → Power poller → Run workflow*: перший ручний запуск. Він запам'ятає останній пост
+4. *(Опційно)* *Actions → Power poller → Run workflow* з галочкою «тестове сповіщення» — перевірка звуку.
+5. *Actions → Power poller → Run workflow*: перший ручний запуск. Він запам'ятає останній пост
    (гілка `state`) і далі запускатиметься сам кожні ~5 хв.
 
 Те саме через `gh` (значення секретів команда спитає сама):
@@ -48,7 +49,7 @@ gh secret set TG_CHANNEL && gh secret set BARK_KEY
 ```
 
 ```bash
-gh workflow run poll.yml && gh run watch
+gh workflow run poll.yml -f test_notify=true && gh workflow run poll.yml
 ```
 
 ## 3. Перевірка звуку локально
