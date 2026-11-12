@@ -31,6 +31,8 @@ class BarkNotifier:
         critical: bool = True,
         volume: int = 10,
         call: bool = False,
+        repeat: int = 1,
+        repeat_interval: float = 4.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.key = key
@@ -39,6 +41,8 @@ class BarkNotifier:
         self.critical = critical
         self.volume = max(0, min(10, volume))
         self.call = call
+        self.repeat = max(1, repeat)
+        self.repeat_interval = repeat_interval
         self._client = client
 
     def payload(self, title: str, body: str, *, urgent: bool) -> dict:
@@ -62,12 +66,24 @@ class BarkNotifier:
         return data
 
     async def send(self, title: str, body: str, *, urgent: bool = True) -> None:
+        """Термінові сповіщення шле `repeat` разів (кожне — окремий звук) з паузою між ними."""
+        times = self.repeat if urgent else 1
+        payload = self.payload(title, body, urgent=urgent)
         async with _client_ctx(self._client) as client:
-            resp = await client.post(f"{self.server}/push", json=self.payload(title, body, urgent=urgent))
-            resp.raise_for_status()
-            data = resp.json()
-            if data.get("code") != 200:
-                raise RuntimeError(f"Bark error: {data}")
+            await self._post(client, payload)  # помилка першого → MultiNotifier повторить
+            for i in range(2, times + 1):
+                await asyncio.sleep(self.repeat_interval)
+                try:
+                    await self._post(client, payload)
+                except Exception as exc:  # noqa: BLE001 — головне вже доставлено
+                    log.warning("bark: повтор %d/%d не вдався: %s", i, times, exc)
+
+    async def _post(self, client: httpx.AsyncClient, payload: dict) -> None:
+        resp = await client.post(f"{self.server}/push", json=payload)
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("code") != 200:
+            raise RuntimeError(f"Bark error: {data}")
 
 
 class TelegramBotNotifier:

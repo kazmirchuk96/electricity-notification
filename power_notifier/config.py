@@ -49,6 +49,7 @@ class Config:
     bark_critical: bool
     bark_volume: int
     bark_call: bool
+    bark_repeat: int
 
     bot_token: str | None
     bot_chat_id: str | None
@@ -75,6 +76,7 @@ class Config:
             bark_critical=_bool("BARK_CRITICAL", True),
             bark_volume=_int("BARK_VOLUME", 10),
             bark_call=_bool("BARK_CALL", False),
+            bark_repeat=_int("BARK_REPEAT", 1),
             bot_token=_str("TG_BOT_TOKEN"),
             bot_chat_id=_str("TG_BOT_CHAT_ID"),
             max_message_age_min=_int("MAX_MESSAGE_AGE_MIN", 30),

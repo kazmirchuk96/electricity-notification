@@ -28,6 +28,15 @@ async def test_bark_critical_payload():
     assert body["level"] == "critical" and body["volume"] == 10 and body["sound"] == "alarm"
 
 
+async def test_bark_repeat_urgent_only():
+    captured = []
+    n = BarkNotifier("KEY", repeat=2, repeat_interval=0, client=_mock_client(captured, {"code": 200}))
+    await n.send("T", "B")
+    assert len(captured) == 2
+    await n.send("T", "B", urgent=False)
+    assert len(captured) == 3
+
+
 async def test_bark_non_urgent_is_passive():
     n = BarkNotifier("KEY")
     p = n.payload("T", "B", urgent=False)
