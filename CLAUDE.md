@@ -36,6 +36,7 @@ poll (GitHub Actions)                         run (VPS, Telethon)
 | `power_notifier/parser.py` | Чистий парсинг тексту → `PowerEvent(status, time, duration, schedule)`; `format_notification()`. Без I/O. |
 | `power_notifier/public_channel.py` | `channel_username()`, `parse_channel_page()` (BeautifulSoup, `div.tgme_widget_message[data-post]`), `fetch_public_posts()`; `ChannelFetchError`, якщо превʼю немає (редирект з `/s/`). |
 | `power_notifier/poller.py` | `poll_once()` + JSON-стан `{"last_id": N}` у `STATE_FILE`. |
+| `power_notifier/quiet.py` | `QuietHours.parse('00:00-06:30', 'Europe/Kyiv')`, `.contains(now)`; підтримує проміжок через північ. |
 | `power_notifier/core.py` | Спільна політика `should_notify()`, `deliver()`, `build_notifier()` з конфігу. |
 | `power_notifier/notifiers.py` | Канали доставки. Протокол `Notifier.send(title, body, *, urgent)`. `MultiNotifier` повертає список каналів, що не спрацювали. |
 | `power_notifier/listener.py` | Режим `run`: Telethon-клієнт, `PowerHandler`. Telethon імпортується лише тут (у `__main__` — ліниво). |
@@ -57,6 +58,8 @@ poll (GitHub Actions)                         run (VPS, Telethon)
   Telegram-бот — запасний; у `poll` потрібен явний `TG_BOT_CHAT_ID`.
   Bark не вміє програти звук N разів, тому `BARK_REPEAT` шле N окремих push з паузою ~4 с
   (лише для термінових; помилка повтору лише логується).
+- **Тихі години** (`QUIET_HOURS`, `TIMEZONE`, модуль `quiet.py`) перевіряються в `should_notify()` за
+  поточним часом: подія в тихі години пропускається остаточно (стан просувається), `test-notify` їх ігнорує.
 - Сповіщення про «світло зникло» вимкнені за замовчуванням (`NOTIFY_ON_OFF`), а коли ввімкнені,
   йдуть як `urgent=False` (Bark `passive`, Telegram `disable_notification`).
 - Парсер не залежить від заголовка «СвітлоБот ⚡ …» і терпить різні апострофи (`' ’ ʼ \``).

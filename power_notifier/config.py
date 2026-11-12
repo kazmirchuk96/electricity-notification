@@ -6,6 +6,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .quiet import QuietHours
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -56,12 +58,18 @@ class Config:
 
     max_message_age_min: int
     notify_on_off: bool
+    quiet_hours: QuietHours | None
     log_level: str
 
     @classmethod
     def load(cls, env_file: Path | None = None) -> "Config":
         load_dotenv(env_file or PROJECT_ROOT / ".env")
         api_id = _str("TG_API_ID")
+        quiet_spec = _str("QUIET_HOURS")
+        try:
+            quiet = QuietHours.parse(quiet_spec, _str("TIMEZONE", "Europe/Kyiv")) if quiet_spec else None
+        except ValueError as exc:
+            raise ConfigError(str(exc)) from exc
         session = _path("TG_SESSION", "data/user")
         state = _path("STATE_FILE", "data/state.json")
         return cls(
@@ -81,6 +89,7 @@ class Config:
             bot_chat_id=_str("TG_BOT_CHAT_ID"),
             max_message_age_min=_int("MAX_MESSAGE_AGE_MIN", 30),
             notify_on_off=_bool("NOTIFY_ON_OFF", False),
+            quiet_hours=quiet,
             log_level=_str("LOG_LEVEL", "INFO").upper(),
         )
 

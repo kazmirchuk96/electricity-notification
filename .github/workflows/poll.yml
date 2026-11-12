@@ -58,6 +58,8 @@ jobs:
           BARK_CALL: ${{ vars.BARK_CALL }}
           BARK_REPEAT: ${{ vars.BARK_REPEAT }}
           NOTIFY_ON_OFF: ${{ vars.NOTIFY_ON_OFF }}
+          QUIET_HOURS: ${{ vars.QUIET_HOURS }}
+          TIMEZONE: ${{ vars.TIMEZONE }}
           # cron у GitHub може запізнюватись — тож вікно ширше, ніж для режиму реального часу
           MAX_MESSAGE_AGE_MIN: ${{ vars.MAX_MESSAGE_AGE_MIN || '120' }}
         run: python -m power_notifier ${{ inputs.test_notify && 'test-notify' || 'poll' }}

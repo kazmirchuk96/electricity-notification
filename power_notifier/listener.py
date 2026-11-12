@@ -15,6 +15,7 @@ from .config import Config, ConfigError
 from .core import build_notifier, deliver, should_notify
 from .notifiers import MultiNotifier
 from .parser import parse_message
+from .quiet import QuietHours
 
 log = logging.getLogger(__name__)
 
@@ -29,10 +30,18 @@ def make_client(cfg: Config) -> TelegramClient:
 class PowerHandler:
     """Обробка одного повідомлення — окремо від Telethon, щоб легко тестувати."""
 
-    def __init__(self, notifier: MultiNotifier, *, max_age_min: int, notify_on_off: bool) -> None:
+    def __init__(
+        self,
+        notifier: MultiNotifier,
+        *,
+        max_age_min: int,
+        notify_on_off: bool,
+        quiet_hours: QuietHours | None = None,
+    ) -> None:
         self.notifier = notifier
         self.max_age_min = max_age_min
         self.notify_on_off = notify_on_off
+        self.quiet_hours = quiet_hours
         self._seen: deque[int] = deque(maxlen=500)
 
     async def handle(self, msg_id: int, text: str | None, date: datetime | None) -> bool:
@@ -45,7 +54,13 @@ class PowerHandler:
         if event is None:
             log.debug("Повідомлення %s не про світло — пропускаю", msg_id)
             return False
-        if not should_notify(event, date, max_age_min=self.max_age_min, notify_on_off=self.notify_on_off):
+        if not should_notify(
+            event,
+            date,
+            max_age_min=self.max_age_min,
+            notify_on_off=self.notify_on_off,
+            quiet_hours=self.quiet_hours,
+        ):
             return False
         return await deliver(self.notifier, event)
 
@@ -59,7 +74,12 @@ async def run(cfg: Config) -> None:
 
     entity = await client.get_entity(_channel_ref(channel))
     notifier = await build_notifier(cfg, client)
-    handler = PowerHandler(notifier, max_age_min=cfg.max_message_age_min, notify_on_off=cfg.notify_on_off)
+    handler = PowerHandler(
+        notifier,
+        max_age_min=cfg.max_message_age_min,
+        notify_on_off=cfg.notify_on_off,
+        quiet_hours=cfg.quiet_hours,
+    )
 
     @client.on(events.NewMessage(chats=entity))
     async def _on_message(event: events.NewMessage.Event) -> None:

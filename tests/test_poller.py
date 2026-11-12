@@ -153,3 +153,40 @@ async def test_poll_failed_delivery_keeps_state(cfg):
     save_state(cfg.state_path, {"last_id": 101})
     res = await poll_once(cfg, multi(FakeNotifier(fail=True)), fetch=fetcher(Post(102, T_ON, ON)), now=T_ON)
     assert not res.state_changed and load_state(cfg.state_path) == {"last_id": 101}
+
+
+# ---------- тихі години ----------
+
+from power_notifier.quiet import QuietHours  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "spec,utc_hm,expected",
+    [
+        ("00:00-06:30", (21, 59), False),  # 23:59 Київ
+        ("00:00-06:30", (22, 0), True),  # 00:00 Київ
+        ("00:00-06:30", (4, 29), True),  # 06:29 Київ
+        ("00:00-06:30", (4, 30), False),  # 06:30 Київ
+        ("23:00-07:00", (21, 30), True),  # 23:30 Київ, через північ
+        ("23:00-07:00", (10, 0), False),
+    ],
+)
+def test_quiet_hours_contains(spec, utc_hm, expected):
+    q = QuietHours.parse(spec, "Europe/Kyiv")
+    moment = datetime(2026, 11, 12, *utc_hm, tzinfo=timezone.utc)  # листопад: Київ = UTC+2
+    assert q.contains(moment) is expected
+
+
+def test_quiet_hours_bad_spec():
+    with pytest.raises(ValueError):
+        QuietHours.parse("вночі", "Europe/Kyiv")
+
+
+async def test_poll_quiet_hours_skip_and_advance(cfg):
+    cfg = replace(cfg, quiet_hours=QuietHours.parse("00:00-06:30", "Europe/Kyiv"))
+    save_state(cfg.state_path, {"last_id": 101})
+    fake = FakeNotifier()
+    night = datetime(2026, 11, 12, 1, 0, tzinfo=timezone.utc)  # 03:00 Київ
+    res = await poll_once(cfg, multi(fake), fetch=fetcher(Post(102, night, ON)), now=night)
+    assert fake.calls == [] and res.state_changed
+    assert load_state(cfg.state_path) == {"last_id": 102}

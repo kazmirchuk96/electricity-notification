@@ -70,6 +70,7 @@ async def poll_once(
             post.date,
             max_age_min=cfg.max_message_age_min,
             notify_on_off=cfg.notify_on_off,
+            quiet_hours=cfg.quiet_hours,
             now=now or datetime.now(timezone.utc),
         ):
             notified = await deliver(notifier, event)

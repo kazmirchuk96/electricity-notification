@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from .config import Config, ConfigError
 from .notifiers import BarkNotifier, MultiNotifier, TelegramBotNotifier
 from .parser import PowerEvent, PowerStatus, format_notification
+from .quiet import QuietHours
 
 log = logging.getLogger(__name__)
 
@@ -18,10 +19,15 @@ def should_notify(
     *,
     max_age_min: int,
     notify_on_off: bool,
+    quiet_hours: QuietHours | None = None,
     now: datetime | None = None,
 ) -> bool:
+    now = now or datetime.now(timezone.utc)
+    if quiet_hours is not None and quiet_hours.contains(now):
+        log.info("Тихі години (%s) — подію %s пропускаю", quiet_hours, event.status.value)
+        return False
     if max_age_min > 0 and posted_at is not None:
-        age = (now or datetime.now(timezone.utc)) - posted_at
+        age = now - posted_at
         if age > timedelta(minutes=max_age_min):
             log.info("Подія %s застара (%s) — пропускаю", event.status.value, age)
             return False
