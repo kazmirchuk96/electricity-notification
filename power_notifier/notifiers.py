@@ -33,6 +33,7 @@ class BarkNotifier:
         call: bool = False,
         repeat: int = 1,
         repeat_interval: float = 4.0,
+        icon: str | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.key = key
@@ -43,6 +44,7 @@ class BarkNotifier:
         self.call = call
         self.repeat = max(1, repeat)
         self.repeat_interval = repeat_interval
+        self.icon = icon
         self._client = client
 
     def payload(self, title: str, body: str, *, urgent: bool) -> dict:
@@ -52,6 +54,8 @@ class BarkNotifier:
             "body": body,
             "group": "Світло",
         }
+        if self.icon:
+            data["icon"] = self.icon  # URL картинки замість іконки Bark (iOS 15+)
         if urgent:
             data["sound"] = self.sound
             if self.critical:

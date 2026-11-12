@@ -37,6 +37,11 @@ async def test_bark_repeat_urgent_only():
     assert len(captured) == 3
 
 
+def test_bark_icon():
+    assert BarkNotifier("KEY", icon="https://x/i.png").payload("T", "B", urgent=True)["icon"] == "https://x/i.png"
+    assert "icon" not in BarkNotifier("KEY").payload("T", "B", urgent=True)
+
+
 async def test_bark_non_urgent_is_passive():
     n = BarkNotifier("KEY")
     p = n.payload("T", "B", urgent=False)

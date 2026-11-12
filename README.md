@@ -32,7 +32,7 @@ GitHub Actions (cron ~5 хв) ──▶ t.me/s/<канал> ──▶ парсе
    - `TG_CHANNEL`: username каналу (`@назва` або `https://t.me/назва`)
    - `BARK_KEY`
    - *(опційно)* `TG_BOT_TOKEN`, `TG_BOT_CHAT_ID`
-3. *(Опційно)* там само у ***Variables***: `BARK_SOUND`, `BARK_CRITICAL`, `BARK_VOLUME`, `BARK_CALL`, `BARK_REPEAT`,
+3. *(Опційно)* там само у ***Variables***: `BARK_SOUND`, `BARK_CRITICAL`, `BARK_VOLUME`, `BARK_CALL`, `BARK_REPEAT`, `BARK_ICON`,
    `NOTIFY_ON_OFF`, `QUIET_HOURS`, `MAX_MESSAGE_AGE_MIN` (див. таблицю нижче).
 4. *(Опційно)* *Actions → Power poller → Run workflow* з галочкою «тестове сповіщення» — перевірка звуку.
 5. *Actions → Power poller → Run workflow*: перший ручний запуск. Він запам'ятає останній пост
@@ -76,6 +76,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp .env.ex
 | `BARK_CRITICAL` | `true` | звучить навіть у беззвучному режимі |
 | `BARK_VOLUME` | `10` | гучність critical alert, 0–10 |
 | `BARK_CALL` | `false` | повторювати звук ~30 с |
+| `BARK_ICON` | — | URL картинки замість іконки Bark (iOS 15+); у нас лампочка [Twemoji](https://github.com/jdecked/twemoji) (CC-BY 4.0) |
 | `BARK_REPEAT` | `1` | скільки разів надіслати сповіщення «з'явилося» (пауза ~4 с) |
 | `NOTIFY_ON_OFF` | `false` | також тихе сповіщення, коли світло зникло |
 | `QUIET_HOURS` | — | напр. `00:00-06:30`: у цей час сповіщень немає (пропущені не доходять пізніше) |

@@ -57,6 +57,7 @@ jobs:
           BARK_VOLUME: ${{ vars.BARK_VOLUME }}
           BARK_CALL: ${{ vars.BARK_CALL }}
           BARK_REPEAT: ${{ vars.BARK_REPEAT }}
+          BARK_ICON: ${{ vars.BARK_ICON }}
           NOTIFY_ON_OFF: ${{ vars.NOTIFY_ON_OFF }}
           QUIET_HOURS: ${{ vars.QUIET_HOURS }}
           TIMEZONE: ${{ vars.TIMEZONE }}

@@ -59,6 +59,7 @@ async def build_notifier(cfg: Config, client=None) -> MultiNotifier:
                 volume=cfg.bark_volume,
                 call=cfg.bark_call,
                 repeat=cfg.bark_repeat,
+                icon=cfg.bark_icon,
             )
         )
     if cfg.bot_token:
