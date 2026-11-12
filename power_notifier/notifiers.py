@@ -56,7 +56,8 @@ class BarkNotifier:
             data["sound"] = self.sound
             if self.critical:
                 data["level"] = "critical"
-                data["volume"] = self.volume
+                # Bark-сервер читає параметри лише як рядки: число тут дає гучність 0 (тиша).
+                data["volume"] = str(self.volume)
             else:
                 data["level"] = "timeSensitive"
             if self.call:

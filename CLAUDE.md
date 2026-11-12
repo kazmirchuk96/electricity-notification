@@ -56,6 +56,8 @@ poll (GitHub Actions)                         run (VPS, Telethon)
   у workflow не дає двом запускам пушити одночасно.
 - **Bark як основний канал**: тільки critical alert гарантує звук у беззвучному режимі/Focus.
   Telegram-бот — запасний; у `poll` потрібен явний `TG_BOT_CHAT_ID`.
+  У JSON для Bark усі значення — рядки (`volume: "10"`): числове `volume` сервер ігнорує → critical
+  alert з гучністю 0, тобто без звуку (перевірено на практиці).
   Bark не вміє програти звук N разів, тому `BARK_REPEAT` шле N окремих push з паузою ~4 с
   (лише для термінових; помилка повтору лише логується).
 - **Тихі години** (`QUIET_HOURS`, `TIMEZONE`, модуль `quiet.py`) перевіряються в `should_notify()` за

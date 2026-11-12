@@ -25,7 +25,7 @@ async def test_bark_critical_payload():
     url, body = captured[0]
     assert url == "https://api.day.app/push"
     assert body["device_key"] == "KEY"
-    assert body["level"] == "critical" and body["volume"] == 10 and body["sound"] == "alarm"
+    assert body["level"] == "critical" and body["volume"] == "10" and body["sound"] == "alarm"
 
 
 async def test_bark_repeat_urgent_only():
