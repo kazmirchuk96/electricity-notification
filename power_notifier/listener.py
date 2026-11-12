@@ -1,16 +1,20 @@
-"""Telethon-userbot: слухає канал СвітлоБота і шле сповіщення, коли світло з'являється."""
+"""Режим реального часу (для VPS): Telethon-userbot слухає канал і шле сповіщення миттєво.
+
+Потрібен вхід у Telegram-акаунт (`login`). Для GitHub Actions використовується `poller.py`.
+"""
 
 from __future__ import annotations
 
 import logging
 from collections import deque
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from telethon import TelegramClient, events
 
 from .config import Config, ConfigError
-from .notifiers import BarkNotifier, MultiNotifier, Notifier, TelegramBotNotifier
-from .parser import PowerStatus, format_notification, parse_message
+from .core import build_notifier, deliver, should_notify
+from .notifiers import MultiNotifier
+from .parser import parse_message
 
 log = logging.getLogger(__name__)
 
@@ -18,41 +22,16 @@ log = logging.getLogger(__name__)
 def make_client(cfg: Config) -> TelegramClient:
     cfg.require_telegram()
     cfg.session_path.parent.mkdir(parents=True, exist_ok=True)
-    # catch_up: після обриву зв'язку (напр. роутер без світла) дотягує пропущені повідомлення.
+    # catch_up: після обриву зв'язку дотягує пропущені повідомлення.
     return TelegramClient(str(cfg.session_path), cfg.api_id, cfg.api_hash, catch_up=True)
 
 
-async def build_notifier(cfg: Config, client: TelegramClient | None = None) -> MultiNotifier:
-    notifiers: list[Notifier] = []
-    if cfg.bark_key:
-        notifiers.append(
-            BarkNotifier(
-                cfg.bark_key,
-                server=cfg.bark_server,
-                sound=cfg.bark_sound,
-                critical=cfg.bark_critical,
-                volume=cfg.bark_volume,
-                call=cfg.bark_call,
-            )
-        )
-    if cfg.bot_token:
-        chat_id = cfg.bot_chat_id
-        if not chat_id and client is not None:
-            chat_id = (await client.get_me()).id
-        if not chat_id:
-            raise ConfigError("Задайте TG_BOT_CHAT_ID або увійдіть у Telegram (login)")
-        notifiers.append(TelegramBotNotifier(cfg.bot_token, chat_id))
-    if not notifiers:
-        raise ConfigError("Не налаштовано жодного каналу сповіщень: задайте BARK_KEY та/або TG_BOT_TOKEN у .env")
-    return MultiNotifier(notifiers)
-
-
 class PowerHandler:
-    """Логіка обробки одного повідомлення — окремо від Telethon, щоб легко тестувати."""
+    """Обробка одного повідомлення — окремо від Telethon, щоб легко тестувати."""
 
     def __init__(self, notifier: MultiNotifier, *, max_age_min: int, notify_on_off: bool) -> None:
         self.notifier = notifier
-        self.max_age = timedelta(minutes=max_age_min) if max_age_min > 0 else None
+        self.max_age_min = max_age_min
         self.notify_on_off = notify_on_off
         self._seen: deque[int] = deque(maxlen=500)
 
@@ -66,21 +45,9 @@ class PowerHandler:
         if event is None:
             log.debug("Повідомлення %s не про світло — пропускаю", msg_id)
             return False
-
-        if self.max_age and date is not None:
-            age = datetime.now(timezone.utc) - date
-            if age > self.max_age:
-                log.info("Повідомлення %s застаре (%s) — пропускаю", msg_id, age)
-                return False
-
-        if event.status is PowerStatus.OFF and not self.notify_on_off:
-            log.info("Світло зникло (%s) — сповіщення вимкнене", event.time)
+        if not should_notify(event, date, max_age_min=self.max_age_min, notify_on_off=self.notify_on_off):
             return False
-
-        title, body = format_notification(event)
-        log.info("Подія: %s — %s", event.status.value, title)
-        failed = await self.notifier.send(title, body, urgent=event.status is PowerStatus.ON)
-        return len(failed) < len(self.notifier.notifiers)
+        return await deliver(self.notifier, event)
 
 
 async def run(cfg: Config) -> None:

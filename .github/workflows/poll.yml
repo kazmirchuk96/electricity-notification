@@ -1,0 +1,75 @@
+name: Power poller
+
+# Кожні ~5 хв перевіряє публічний канал СвітлоБота і шле сповіщення, коли світло з'явилось.
+# Стан (id останнього обробленого поста) зберігається в окремій гілці `state`.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write # пуш у гілку state
+  actions: write # keepalive: не дати GitHub вимкнути cron через 60 днів без активності
+
+concurrency:
+  group: power-poller
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Load state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init -q -b state state
+          cd state
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch -q --depth=1 origin state 2>/dev/null; then git reset -q --hard FETCH_HEAD; fi
+          cat state.json 2>/dev/null || echo "(стану ще немає)"
+
+      - name: Poll channel
+        env:
+          STATE_FILE: state/state.json
+          TG_CHANNEL: ${{ secrets.TG_CHANNEL }}
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_BOT_CHAT_ID: ${{ secrets.TG_BOT_CHAT_ID }}
+          BARK_SERVER: ${{ vars.BARK_SERVER }}
+          BARK_SOUND: ${{ vars.BARK_SOUND }}
+          BARK_CRITICAL: ${{ vars.BARK_CRITICAL }}
+          BARK_VOLUME: ${{ vars.BARK_VOLUME }}
+          BARK_CALL: ${{ vars.BARK_CALL }}
+          NOTIFY_ON_OFF: ${{ vars.NOTIFY_ON_OFF }}
+          # cron у GitHub може запізнюватись — тож вікно ширше, ніж для режиму реального часу
+          MAX_MESSAGE_AGE_MIN: ${{ vars.MAX_MESSAGE_AGE_MIN || '120' }}
+        run: python -m power_notifier poll
+
+      - name: Save state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd state
+          last=$(git log -1 --format=%ct 2>/dev/null || echo 0)
+          if [ $(( $(date +%s) - last )) -gt $(( 20 * 86400 )) ]; then
+            date -u +%FT%TZ > keepalive.txt
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/poll.yml/enable" || true
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git -c user.name="github-actions[bot]" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                commit -q -m "state: $(tr -d ' \n' < state.json)"
+            git push -q origin HEAD:state
+          fi

@@ -26,6 +26,11 @@ def _int(name: str, default: int) -> int:
     return int(raw) if raw is not None else default
 
 
+def _path(name: str, default: str) -> Path:
+    path = Path(_str(name, default))
+    return path if path.is_absolute() else PROJECT_ROOT / path
+
+
 class ConfigError(RuntimeError):
     pass
 
@@ -36,6 +41,7 @@ class Config:
     api_hash: str | None
     channel: str | None
     session_path: Path
+    state_path: Path
 
     bark_key: str | None
     bark_server: str
@@ -55,14 +61,14 @@ class Config:
     def load(cls, env_file: Path | None = None) -> "Config":
         load_dotenv(env_file or PROJECT_ROOT / ".env")
         api_id = _str("TG_API_ID")
-        session = Path(_str("TG_SESSION", "data/user"))
-        if not session.is_absolute():
-            session = PROJECT_ROOT / session
+        session = _path("TG_SESSION", "data/user")
+        state = _path("STATE_FILE", "data/state.json")
         return cls(
             api_id=int(api_id) if api_id else None,
             api_hash=_str("TG_API_HASH"),
             channel=_str("TG_CHANNEL"),
             session_path=session,
+            state_path=state,
             bark_key=_str("BARK_KEY"),
             bark_server=_str("BARK_SERVER", "https://api.day.app").rstrip("/"),
             bark_sound=_str("BARK_SOUND", "alarm"),
