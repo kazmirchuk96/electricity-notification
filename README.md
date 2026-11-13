@@ -4,14 +4,16 @@
 пост `🟢 18:19 Світло з'явилося`, він надсилає на iPhone гучне сповіщення.
 
 ```
-GitHub Actions (cron ~5 хв) ──▶ t.me/s/<канал> ──▶ парсер ──▶ Bark (critical alert) ──▶ 🔊 iPhone
+cron-job.org (кожні 3 хв) ──▶ GitHub Actions ──▶ t.me/s/<канал> ──▶ парсер ──▶ Bark (critical alert) ──▶ 🔊 iPhone
                                                           └──▶ Telegram-бот (опційно)
 ```
 
 - **Без сервера та без входу в Telegram.** Код працює безкоштовно на GitHub Actions і читає
   публічне веб-превʼю каналу.
 - **Bark** — безкоштовний iOS-застосунок. Його critical alerts звучать навіть у беззвучному режимі та у Focus.
-- **Затримка.** GitHub запускає cron приблизно кожні 5 хв, але під навантаженням буває 10–20 хв.
+- **Затримка — до ~3–4 хв.** Вбудований cron GitHub ненадійний: на практиці замість «кожні 5 хв»
+  він запускався 3 рази на добу. Тому запуски робить зовнішній безкоштовний cron-job.org через
+  GitHub API (крок 3), а вбудований cron лишився лише як запасний.
   Якщо потрібно за секунди, див. «Режим реального часу (VPS)» нижче.
 
 ## 1. iPhone: Bark
@@ -36,7 +38,22 @@ GitHub Actions (cron ~5 хв) ──▶ t.me/s/<канал> ──▶ парсе
    `NOTIFY_ON_OFF`, `QUIET_HOURS`, `MAX_MESSAGE_AGE_MIN` (див. таблицю нижче).
 4. *(Опційно)* *Actions → Power poller → Run workflow* з галочкою «тестове сповіщення» — перевірка звуку.
 5. *Actions → Power poller → Run workflow*: перший ручний запуск. Він запам'ятає останній пост
-   (гілка `state`) і далі запускатиметься сам кожні ~5 хв.
+   (гілка `state`).
+
+## 3. Зовнішній таймер: cron-job.org
+
+1. **Токен GitHub** (лише для запуску цього workflow): *GitHub → Settings → Developer settings →
+   Personal access tokens → Fine-grained tokens → Generate new token*:
+   - *Repository access*: **Only select repositories** → `electricity-notification`
+   - *Permissions → Repository permissions → Actions*: **Read and write**
+   - *Expiration*: максимум (366 днів) — і поставте собі нагадування оновити.
+2. **cron-job.org** → зареєструйтесь → *Create cronjob*:
+   - *URL*: `https://api.github.com/repos/kazmirchuk96/electricity-notification/actions/workflows/poll.yml/dispatches`
+   - *Execution schedule*: кожні **3** хвилини
+   - вкладка *Advanced*: *Request method* **POST**; *Headers*:
+     `Authorization: Bearer <токен>`, `Accept: application/vnd.github+json`,
+     `X-GitHub-Api-Version: 2022-11-28`; *Request body*: `{"ref":"main"}`
+3. *Test run* у cron-job.org має повернути **204**, а в *Actions* з'явиться новий запуск.
 
 Те саме через `gh` (значення секретів команда спитає сама):
 
@@ -52,7 +69,7 @@ gh secret set TG_CHANNEL && gh secret set BARK_KEY
 gh workflow run poll.yml -f test_notify=true && gh workflow run poll.yml
 ```
 
-## 3. Перевірка звуку локально
+## 4. Перевірка звуку локально
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp .env.example .env
@@ -90,6 +107,8 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cp .env.ex
 ## Обслуговування
 
 - Якщо workflow падає (наприклад, Telegram змінив верстку t.me/s), GitHub надішле лист.
+- Токен GitHub для cron-job.org має строк дії: коли закінчиться, запуски зупиняться (cron-job.org
+  покаже помилки 401) — створіть новий і замініть у заголовку.
 - GitHub вимикає cron у публічних репо після 60 днів без активності. Workflow сам робить keepalive
   кожні ~20 днів. Якщо його все ж вимкнуть, увімкніть одною кнопкою в *Actions*.
 
